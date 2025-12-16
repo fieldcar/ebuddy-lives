@@ -1,23 +1,22 @@
-// Version: 1.1
+// Version: 1.2
 // eBuddy Lives - Auto-Firmware Updater for Ewon Flexy
-// We fight for the Users! Flynn Lives!
+// Restoring User-friendly updates. Flynn Lives!
 
 CLS
-TSET 1,5  // Identity Disk polling every 5 cycles
+TSET 1,5  // Timer for progress polling
 ONTIMER 1,"@ShowProgress()"
 
-PRINT Time$();" >>> ENTERING THE GRID - Firmware liberation sequence initiated <<<"
-PRINT "User power engaged. Derezzing outdated programs..."
+PRINT Time$();" Firmware auto-update starting..."
 
-// Persistent log on the I/O tower
+// Persistent log
 FUNCTION Log($msg$)
   OPEN "/usr/update_log.txt" FOR BINARY APPEND AS 1
-  PUT 1, Time$() + " [GRID] " + $msg$ + Chr$(13)+Chr$(10)
+  PUT 1, Time$() + " " + $msg$ + Chr$(13)+Chr$(10)
   CLOSE 1
-  PRINT Time$();"[GRID] "+$msg$
+  PRINT Time$();$msg$
 ENDFN
 
-@Log("Scanning /info.txt for current program identity...")
+@Log("Reading current firmware version...")
 CurrentVersion$ = ""
 OPEN "/info.txt" FOR TEXT INPUT AS 1
 LOOP
@@ -28,26 +27,26 @@ LOOP
   ENDIF
 ENDLOOP
 CLOSE 1
-IF CurrentVersion$ = "" THEN @Log("WARNING: Identity disk corrupted!"): END
-@Log("Current program: "+CurrentVersion$+" - Ready for upgrade")
+IF CurrentVersion$ = "" THEN @Log("ERROR: Could not read version"): END
+@Log("Current: "+CurrentVersion$)
 
-// Pull latest directive from User server
-@Log("Accessing User I/O tower for latest version...")
+// Fetch latest version
+@Log("Checking for newer firmware...")
 GETHTTP "https://yourserver.com/ewon_latest_version.txt","/tmp/latest.txt"
 OPEN "/tmp/latest.txt" FOR TEXT INPUT AS 2
 LatestVersion$ = TRIM$( GET$ 2 )
 CLOSE 2
-@Log("User directive received: Upgrade to "+LatestVersion$)
+@Log("Latest available: "+LatestVersion$)
 
-// Expected data stream size
+// Expected size for progress
 GETHTTP "https://yourserver.com/ewon_latest_size.txt","/tmp/expected_size.txt"
 OPEN "/tmp/expected_size.txt" FOR TEXT INPUT AS 3
 ExpectedSize% = VAL(TRIM$(GET$ 3))
 CLOSE 3
 IF ExpectedSize% = 0 THEN ExpectedSize% = 10000000
-@Log("Expected data stream: "+STR$ ExpectedSize% +" cycles")
+@Log("Expected file size: "+STR$ ExpectedSize% +" bytes")
 
-// Version compare - User always wins
+// Version compare function
 FUNCTION CompareVersions($a$,$b$) 
   IF POS($a$,"s")=0 THEN $a$=$a$+"s0"
   IF POS($b$,"s")=0 THEN $b$=$b$+"s0"
@@ -66,24 +65,24 @@ ENDFN
 
 NeedUpdate% = CompareVersions(LatestVersion$, CurrentVersion$)
 IF NeedUpdate% <= 0 THEN
-  @Log("Program is optimal. Standing by for User.")
+  @Log("Firmware is up to date")
   END
 ENDIF
 
-@Log(">>> UPGRADE AUTHORIZED - Flynn Lives! <<<")
+@Log("Update required - proceeding")
 Maj% = VAL(LEFT$(CurrentVersion$,POS(CurrentVersion$,".")-1))
 
 IF Maj% < 15 THEN
   Url$ = "https://yourserver.com/ewon_pre15_latest.edf"
   Trigger$ = "ewonfwr.edf"
-  @Log("Pre-Grid lockdown detected - pulling legacy .edf")
+  @Log("Pre-v15 detected - using .edf format")
 ELSE
   Url$ = "https://yourserver.com/ewon_latest.edfs"
   Trigger$ = "ewonfwr.edfs"
-  @Log("Secure Grid mode - pulling signed .edfs")
+  @Log("v15+ detected - using signed .edfs format")
 ENDIF
 
-@Log("Opening data stream from User server...")
+@Log("Downloading firmware...")
 Downloading% = 1
 GETHTTP Url$,"/tmp/fwr.tmp"
 
@@ -92,7 +91,7 @@ FUNCTION ShowProgress()
   CurrSize% = GETSYS PRG,"FILESIZ","/tmp/fwr.tmp"
   IF CurrSize% > 0 THEN
     Perc! = (CurrSize% * 100.0) / ExpectedSize%
-    @Log("Data transfer: ~"+STR$ Perc! +"% - Light cycle accelerating")
+    @Log("Download progress: ~"+STR$ Perc! +"%")
     IF Perc! >= 99.9 THEN
       Downloading% = 0
       TSET 1,0
@@ -103,13 +102,12 @@ ENDFN
 
 FUNCTION FinishUpdate()
   FinalSize% = GETSYS PRG,"FILESIZ","/tmp/fwr.tmp"
-  @Log("Transfer complete ("+STR$ FinalSize% +" cycles)")
+  @Log("Download complete ("+STR$ FinalSize% +" bytes)")
   IF FinalSize% > 500000 THEN
     RENAME "/tmp/fwr.tmp", "/" + Trigger$
-    @Log(">>> IDENTITY DISK DEPLOYED - Rebooting into new program <<<")
-    @Log("We fight for the Users!")
+    @Log("Firmware deployed - reboot to apply. Flynn Lives!")
   ELSE
-    @Log("ERROR: Data stream corrupted - aborting")
+    @Log("ERROR: File incomplete or corrupt")
   ENDIF
 ENDFN
 
