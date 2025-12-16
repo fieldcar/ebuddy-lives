@@ -1,5 +1,5 @@
 CLS
-PRINT Time$();" >>> GRID BOOTSTRAP ACTIVATED - eBuddy Lives! <<<"
+PRINT Time$();" Bootstrap checking for script updates..."
 
 LocalScript$ = "/usr/auto_update.bas"
 RemoteUrl$ = "https://raw.githubusercontent.com/fieldcar/ebuddy-lives/main/auto_update.bas"
@@ -18,17 +18,17 @@ IF FS "isFile", LocalScript$ THEN
   IF POS(FirstLine$,"Version:") <> -1 THEN LocalVer$ = TRIM$(MID$(FirstLine$, POS(FirstLine$,":")+1, -1))
 ENDIF
 
-PRINT "[GRID] Local core: "+LocalVer$+" | User core: "+RemoteVer$
+PRINT "Local script version: "+LocalVer$+" | Remote: "+RemoteVer$
 
 IF RemoteVer$ > LocalVer$ THEN
-  PRINT ">>> UPGRADING CORE PROGRAM - Flynn Lives! <<<"
-  GETHTTP RemoteUrl$, "/tmp/new_core.bas"
-  Size% = GETSYS PRG,"FILESIZ","/tmp/new_core.bas"
+  PRINT "Updating main script..."
+  GETHTTP RemoteUrl$, "/tmp/new_script.bas"
+  Size% = GETSYS PRG,"FILESIZ","/tmp/new_script.bas"
   IF Size% > 1000 THEN
-    RENAME "/tmp/new_core.bas", LocalScript$
-    PRINT "Core upgraded. Powering User protocol..."
+    RENAME "/tmp/new_script.bas", LocalScript$
+    PRINT "Script updated successfully"
   ELSE
-    PRINT "Transfer failed - Grid interference?"
+    PRINT "Download failed"
   ENDIF
 ENDIF
 
